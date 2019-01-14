@@ -1,8 +1,22 @@
 /*
+  App created by David Oglesby for hackerYou
+  - Displays list of Beau's seasonal beer's using the LCBOAPI. A detailed view of each item 
+    is available if an item is clicked that will also display all stores selling the item. 
+    Also, a map of the store location can be seen by clicking on the store.  
+  
   3rd Party Librairies:
   - Google Maps: https://github.com/google-map-react/google-map-react
   - Font Awesome: https://github.com/FortAwesome/react-fontawesome
+
+  Client: Beau’s (http://beaus.ca)
+  - Brief: Beau’s has hired you to create an application that highlights their seasonal beverages. 
+    Their most well-known brand is Lug Tread, which is not a seasonal beer, so they want to 
+    exclude Lug Tread from the application. Beau’s wants you to display all of the beers that 
+    are available through the LCBO. When a user selects one, they want you to provide a 
+    description and also show the stores that carry that particular beer. If you have time, 
+    also provide a feature that allows the user to get directions to the store they select.
 */
+
 import React from 'react'
 import ReactDOM from 'react-dom'
 import './assets/css/beaus.css';
@@ -52,10 +66,10 @@ class StoreLocation extends React.Component {
   }
 
   render() { 
-    console.log("StoresLoad");  
+    // Show map view of store selected. NOTE: API will be disabled shortly for security reasons
     return (
       <div className="map">
-        <div>&#x3C; <span class="link" onClick={this.props.handleClickBackToDetails}>Back to all Stores</span> | {this.props.storeName}</div>
+        <div>&#x3C; <span className="link" onClick={this.props.handleClickBackToDetails}>Back to all Stores</span> | {this.props.storeName}</div>
         <h1>{this.props.storeName}</h1>
         <div className="map-container">
           <GoogleMapReact
@@ -75,11 +89,13 @@ class StoreLocation extends React.Component {
 class Stores extends React.Component {
   state = {
     loading: true,
+    empty: false,
     storeData: [],
     error: ''
   };
 
   componentDidMount = () => {
+    // When component mounts, get store that carry selected beer
     try {
       fetch("https://lcboapi.com/stores?product_id=" + this.props.id + "&access_key=MDo0ZjgzNGIxOC0wYjE1LTExZTktYTBhMy1lM2Q4MTU1YjUwZDM6Mmx6U3BXWWdMYXcyMlh6cVQ2ZE1CWmt3UWFuSjhFUVNSV0Yw")
       .then(response => {
@@ -91,11 +107,21 @@ class Stores extends React.Component {
         }
       })
       .then(data => {
-        this.setState({
-          storeData: data.result,
-          loading: false,
-          error: ''
-        })
+        if (data.result.length == 0) {
+          this.setState({
+            empty: true,
+            loading: false,
+            error: ''
+          })
+        }
+        else {
+          this.setState({
+            storeData: data.result,
+            empty: false,
+            loading: false,
+            error: ''
+          })
+        }
       })
       .catch(e => {
         this.setState({
@@ -113,12 +139,16 @@ class Stores extends React.Component {
   }
 
   render() {
+    // Return results depending on status: Error, Loading, Empty, StoreView
     let content = '';
     if (this.state.error !== '') {
       content = <div className="stores-error">We apologize, but an error has occurred loading the stores. Please try again in a few minutes.</div>
     }
     else if (this.state.loading) {
       content = <div className="stores-loading">Loading Stores...</div>
+    }
+    else if (this.state.empty) {
+      content = <div className="stores-empty">There are currently no stores selling this item.</div>
     }
     else {
       content = <div className="stores-grid">
@@ -150,13 +180,11 @@ class Stores extends React.Component {
 }
 
 class ItemDetails extends React.Component {
-  
-
-  render() { 
-    console.log("ItemDetailsLoad");  
+  // Display detailed information and stores that carry selected item
+   render() { 
     return (
       <React.Fragment>
-        <div>&#x3C; <span class="link" onClick={this.props.handleClickBackToHome}>Back to all Seasonal Beers</span> | {this.props.name}</div>
+        <div>&#x3C; <span className="link" onClick={this.props.handleClickBackToHome}>Back to all Seasonal Beers</span> | {this.props.name}</div>
         <h1>{this.props.name}</h1>
         <div className="item-details">
           <div className="item-details__image-container">
@@ -219,11 +247,8 @@ class ItemDetails extends React.Component {
 }
 
 class SeasonalItems extends React.Component {
-  /*
-    Display a list of seasonal items in a grid that can be clicked for further detail
-  */
+  // Display a list of seasonal items in a grid that can be clicked for further detail
   render() {
-    console.log("SeasonalItemsLoad");
     return (
       <React.Fragment>
         <h1>Beau’s Seasonal Beverages</h1>
@@ -280,6 +305,7 @@ class Beaus extends React.Component {
   }
   
   componentDidMount = () => {
+    // When component mounts, get seasonal beers from beau's and load into state
     try {
       fetch("https://lcboapi.com/products?where=is_seasonal&where_not=is_dead&q=Beaus&per_page=100&access_key=MDo0ZjgzNGIxOC0wYjE1LTExZTktYTBhMy1lM2Q4MTU1YjUwZDM6Mmx6U3BXWWdMYXcyMlh6cVQ2ZE1CWmt3UWFuSjhFUVNSV0Yw")
       .then(response => {
@@ -313,6 +339,7 @@ class Beaus extends React.Component {
   }
 
   handleClickGoToDetails = (id, name, image_url, tasting_note, style, origin, primary_category, producer_name, serving_suggestion) => {
+    // Update state which will render page in detail view
     this.setState({
       view: 'details',
       selectedItem: {
@@ -330,6 +357,7 @@ class Beaus extends React.Component {
   }
 
   handleClickBackToHome = () => {
+    // Update state which will render page in home view
     this.setState({
       view: 'home',
       selectedItem: {}
@@ -337,6 +365,7 @@ class Beaus extends React.Component {
   }
 
   handleClickBackToDetails = () => {
+    // Update state which will render page in details view last seen by user
     this.setState({
       view: 'details',
       store: {}
@@ -344,6 +373,7 @@ class Beaus extends React.Component {
   }
 
   handleClickGoToStoreMap = (storeName, storeLatitude, storeLongitude) => {
+    // Update state which will render page in map view
     this.setState({
       view: 'map',
       store: {
@@ -355,6 +385,7 @@ class Beaus extends React.Component {
   }
   
   render() {
+    // Return results depending on status: Error, Loading, DetailsView, MapView, HomeView
     let content;
     if (this.state.error !== '') {
       content = SeasonalItemsError(this.state.error);

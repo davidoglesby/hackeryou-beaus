@@ -194,6 +194,12 @@ h1 {
   text-align: center;
 }
 
+.stores-empty {
+  font-size:1.8rem;
+  margin:2rem 0;
+  text-align: center;
+}
+
 .stores-grid { 
   display: grid; 
   grid-template-columns: repeat(auto-fill,minmax(30rem, 1fr));
