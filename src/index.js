@@ -1,16 +1,22 @@
+/*
+  3rd Party Librairies:
+  - Google Maps: https://github.com/google-map-react/google-map-react
+  - Font Awesome: https://github.com/FortAwesome/react-fontawesome
+*/
 import React from 'react'
 import ReactDOM from 'react-dom'
 import './assets/css/beaus.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faBeer, faMapPin } from '@fortawesome/free-solid-svg-icons'
+import { faMapMarkerAlt, faSearchLocation } from '@fortawesome/free-solid-svg-icons'
 import logo from './assets/images/beaus-black-logo.svg';
+import noImagePlaceholder from './assets/images/no-beer-image-placeholder.jpg'
 import GoogleMapReact from 'google-map-react';
 
 class Header extends React.Component {
   render() {
     return (
       <div id="header">
-        <div className="contain-width"><img src={logo} className='header-logo' /></div>
+        <div className="contain-width" onClick={this.props.handleClickBackToHome}><img src={logo} alt="Beau's" className="header-logo" /></div>
       </div>
     );
   };
@@ -19,22 +25,10 @@ class Header extends React.Component {
 class Footer extends React.Component {
   render() {
     return (
-      <div id="footer">Created by David Oglesby for HackerYou</div>
+      <div id="footer">Created by<br />David Oglesby<br />for hackerYou</div>
     )
   }
 }
-
-const MapPin = ({selected}) => {
-  console.log(selected)
-  return (
-    <div className="map-pin-container">
-      {selected ?
-        <FontAwesomeIcon icon={faMapPin} className="map-pin map-pin-selected" /> :
-        <FontAwesomeIcon icon={faMapPin} className="map-pin map-pin-not-selected" />
-      }
-    </div> 
-  )
-};
 
 class StoreLocation extends React.Component {
 
@@ -43,53 +37,42 @@ class StoreLocation extends React.Component {
       lat: 43.70011,
       lng: -79.4163
     },
-    zoom: 6
+    zoom: 5
   }; 
 
-  render() {    
+  renderMarkers(map, maps) {
+    let marker = new maps.Marker({
+      position: {
+        lat: this.props.storeLatitude,
+        lng: this.props.storeLongitude
+      },
+      map,
+      title: ''
+    });
+  }
+
+  render() { 
+    console.log("StoresLoad");  
     return (
       <div className="map">
-        {/* Important! Always set the container height explicitly */}
-        <div onClick={this.props.handleClickBackToDetails}>Back to All Stores</div>
-        <div className="directions-container">
-          <div className="map-container">
-            <GoogleMapReact
-              bootstrapURLKeys={{ key: 'AIzaSyBCl-LjuaDvXajkufdVmEdBkH40Yglnjjo' }}
-              defaultCenter={this.props.center}
-              defaultZoom={this.props.zoom}
-            >
-              {this.props.stores.map((store) => {
-                return (
-                  <MapPin
-                    key={store.id}
-                    lat={store.latitude}
-                    lng={store.longitude}
-                    text={store.name}
-                  />
-                )
-              })}
-              <MapPin
-                lat={this.props.storeLatitude}
-                lng={this.props.storeLongitude}
-                text={this.props.storeName}
-                selected
-              />
-            </GoogleMapReact>
-          </div>
-          <div className="map-stores-container">
-            {this.props.stores.map((store) => {
-              return (
-                <div key={store.id}>{store.name}</div>
-              )
-            })}
-          </div>
+        <div>&#x3C; <span class="link" onClick={this.props.handleClickBackToDetails}>Back to all Stores</span> | {this.props.storeName}</div>
+        <h1>{this.props.storeName}</h1>
+        <div className="map-container">
+          <GoogleMapReact
+            bootstrapURLKeys={{ key: 'AIzaSyBCl-LjuaDvXajkufdVmEdBkH40Yglnjjo' }}
+            defaultCenter={this.props.center}
+            center={this.centerMap}
+            defaultZoom={this.props.zoom}
+            onGoogleApiLoaded={({map, maps}) => this.renderMarkers(map, maps)}
+            yesIWantToUseGoogleMapApiInternals
+          />
         </div>
       </div>
     )
   }
 }
 
-class ItemDetails extends React.Component {
+class Stores extends React.Component {
   state = {
     loading: true,
     storeData: [],
@@ -122,7 +105,6 @@ class ItemDetails extends React.Component {
       })
     }
     catch(err) {
-      console.log("Error" + err)
       this.setState({
         loading: false,
         error: 'Error fetching: ' + err
@@ -130,67 +112,132 @@ class ItemDetails extends React.Component {
     }
   }
 
-  render() {   
+  render() {
+    let content = '';
+    if (this.state.error !== '') {
+      content = <div className="stores-error">We apologize, but an error has occurred loading the stores. Please try again in a few minutes.</div>
+    }
+    else if (this.state.loading) {
+      content = <div className="stores-loading">Loading Stores...</div>
+    }
+    else {
+      content = <div className="stores-grid">
+                  {this.state.storeData.map((store) => { 
+                    return (
+                      <div className="store" key={store.id}>
+                        <div className="store__content">
+                          <div className="store__name">{store.name}</div>
+                          <div className="store__contact">{store.address_line_1}</div>
+                          { store.address_line_2 ? 
+                            <div className="store__contact">{ store.address_line_2 }</div> : ''}
+                          <div className="store__contact">{store.city}, {store.postal_code}</div>
+                          <div className="store__contact">{store.telephone}</div>
+                        </div>
+                        <div className="store__directions" onClick={(e) => this.props.handleClickGoToStoreMap(store.name, store.latitude, store.longitude, e)}><FontAwesomeIcon icon={faMapMarkerAlt} className="store-directions__icon" />&nbsp;&nbsp;View map</div>
+                      </div>
+                    )
+                  })}
+                </div>
+    }
+
     return (
       <React.Fragment>
-        <div><a href="#" onClick={this.props.backClick}>&#x3C; Back To All Seasonal Bears</a> | {this.props.name}</div>
+        <div className="stores-title"><FontAwesomeIcon icon={faSearchLocation} className="stores-title__icon" /> Where to find:</div>
+        {content}
+      </React.Fragment>
+    )
+  }
+}
+
+class ItemDetails extends React.Component {
+  
+
+  render() { 
+    console.log("ItemDetailsLoad");  
+    return (
+      <React.Fragment>
+        <div>&#x3C; <span class="link" onClick={this.props.handleClickBackToHome}>Back to all Seasonal Beers</span> | {this.props.name}</div>
         <h1>{this.props.name}</h1>
-        <div className="item-details-container">
-          <div><img src={this.props.image_url} className='item-details-image' /></div>
-          <div className="item-details-content">
-            {this.props.producer_name ? 
-              <div className="item-details-content-item">
-                <div className="item-details-content-label">Producer:</div> 
-                <div className="item-details-content-value">{this.props.producer_name}</div>
-              </div> : ''
+        <div className="item-details">
+          <div className="item-details__image-container">
+            {this.props.image_url ? 
+              <img src={this.props.image_url} alt={this.props.name} className='item-details__image' /> : 
+              <img src={noImagePlaceholder} alt={this.props.name} className='item-details__image' /> 
             }
-            {this.props.origin ? 
-              <div className="item-details-content-item">
-                <div className="item-details-content-label">Origin:</div> 
-                <div className="item-details-content-value">{this.props.origin}</div>
-              </div> : ''
-            }
-            {this.props.primary_category ? 
-              <div className="item-details-content-item">
-                <div className="item-details-content-label">Category:</div> 
-                <div className="item-details-content-value">{this.props.primary_category}</div>
-              </div> : ''
-            }
-            {this.props.style ? 
-              <div className="item-details-content-item">
-                <div className="item-details-content-label">Style:</div> 
-                <div className="item-details-content-value">{this.props.style}</div>
-              </div> : ''
-            }
-            {this.props.tasting_note ? 
-              <div className="item-details-content-item">
-                <div className="item-details-content-label">Tasting Note:</div> 
-                <div className="item-details-content-value">{this.props.tasting_note}</div>
-              </div> : ''
-            }
-            {this.props.serving_suggestion ? 
-              <div className="item-details-content-item">
-                <div className="item-details-content-label">Suggestions:</div> 
-                <div className="item-details-content-value">{this.props.serving_suggestion}</div>
-              </div> : ''
-            }
-            <div href="#" class="button" onClick={this.props.backClick}>View All Seasonal Beers</div>
+          </div>
+          <div className="item-details__content">
+            <div className="item_details__content-descriptions">
+              {this.props.producer_name ? 
+                <div className="item_details__content-item">
+                  <div className="item_details__content-label">Producer:</div> 
+                  <div className="item_details__content-value">{this.props.producer_name}</div>
+                </div> : ''
+              }
+              {this.props.origin ? 
+                <div className="item_details__content-item">
+                  <div className="item_details__content-label">Origin:</div> 
+                  <div className="item_details__content-value">{this.props.origin}</div>
+                </div> : ''
+              }
+              {this.props.primary_category ? 
+                <div className="item_details__content-item">
+                  <div className="item_details__content-label">Category:</div> 
+                  <div className="item_details__content-value">{this.props.primary_category}</div>
+                </div> : ''
+              }
+              {this.props.style ? 
+                <div className="item_details__content-item">
+                  <div className="item_details__content-label">Style:</div> 
+                  <div className="item_details__content-value">{this.props.style}</div>
+                </div> : ''
+              }
+              {this.props.tasting_note ? 
+                <div className="item_details__content-item">
+                  <div className="item_details__content-label">Tasting Note:</div> 
+                  <div className="item_details__content-value">{this.props.tasting_note}</div>
+                </div> : ''
+              }
+              {this.props.serving_suggestion ? 
+                <div className="item_details__content-item">
+                  <div className="item_details__content-label">Suggestions:</div> 
+                  <div className="item_details__content-value">{this.props.serving_suggestion}</div>
+                </div> : ''
+              }
+            </div>
+            <div className="item_details__exit">
+              <div href="#" className="item_details__exit-button" onClick={this.props.handleClickBackToHome}>View all Seasonal Beers</div>
+            </div>
           </div>
         </div>
-        <div className="stores-title">Where to find:</div>
-        <div className='items-container'>
-          {this.state.storeData.map((store) => { 
+        <Stores 
+            id = {this.props.id}
+            handleClickGoToStoreMap = {this.props.handleClickGoToStoreMap}
+        />
+      </React.Fragment>
+    )
+  }
+}
+
+class SeasonalItems extends React.Component {
+  /*
+    Display a list of seasonal items in a grid that can be clicked for further detail
+  */
+  render() {
+    console.log("SeasonalItemsLoad");
+    return (
+      <React.Fragment>
+        <h1>Beau’s Seasonal Beverages</h1>
+        <div className="items-grid">
+          {this.props.data.map((item) => { 
             return (
-              <div className="store-container" key={store.id}>
-                <div className="store-content">
-                  <div className="store-name">{store.name}</div>
-                  <div className="store-address">{store.address_line_1}</div>
-                  { store.address_line_2 ? 
-                    <div className="store-address">{ store.address_line_2 }</div> : ''}
-                  <div className="store-city">{store.city}, {store.postal_code}</div>
-                  <div className="store-phone">{store.telephone}</div>
+              <div className="items-grid__item" key={item.id}>
+                <div className="items-grid__item-image-container">
+                  {item.image_thumb_url ? 
+                    <img src={item.image_thumb_url} alt={item.name} className='item-grid__item-image' onClick={(e) => this.props.handleClickGoToDetails(item.id, item.name, item.image_url, item.tasting_note, item.style, item.origin, item.primary_category, item.producer_name, item.serving_suggestion, e)} /> : 
+                    <img src={noImagePlaceholder} alt={item.name} className='item-grid__item-image' onClick={(e) => this.props.handleClickGoToDetails(item.id, item.name, item.image_url, item.tasting_note, item.style, item.origin, item.primary_category, item.producer_name, item.serving_suggestion, e)} /> 
+                  }
                 </div>
-                <div className="store-directions" onClick={(e) => this.props.handleClickGoToStoreMap(this.state.storeData, store.name, store.latitude, store.longitude, e)}>Get directions</div>
+                <div className="item-grid__label" onClick={(e) => this.props.handleClickGoToDetails(item.id, item.name, item.image_url, item.tasting_note, item.style, item.origin, item.primary_category, item.producer_name, item.serving_suggestion, e)}>{item.name}</div>
               </div>
             )
           })}
@@ -200,33 +247,36 @@ class ItemDetails extends React.Component {
   }
 }
 
-class ItemDetailsLink extends React.Component {
-  handleClick = () => {
-    //this.props.onHeaderClick(this.props.value);
-    this.props.product_click(this.props.product_id);
-  }
+const SeasonalItemsError = (err) => {
+  return (
+    <React.Fragment>
+      <h1>Beau’s Seasonal Beverages</h1>
+      <div className="items-error">
+        We apologize, but an error has occurred loading this page. Please try again in a few minutes.
+      </div>
+    </React.Fragment>
+  )
+}
 
-  render() {
-    return (
-      <React.Fragment>
-        <img src={this.props.image_url} onClick={this.handleClick} />
-      </React.Fragment>
-      // <th onClick={this.handleClick}>
-      //   {this.props.column}
-      // </th>
-    );
-  }
+const SeasonalItemsLoading = () => {
+  return (
+    <React.Fragment>
+      <h1>Beau’s Seasonal Beverages</h1>
+      <div className="items-loading">
+        Loading...
+      </div>
+    </React.Fragment>
+  )
 }
 
 class Beaus extends React.Component {
   state = {
     data: [],
-    loading: true,
     selectedItem: {},
-    view: 'home', //home, details, map
-    stores: {},
+    store: {},
+    view: 'home', //home, details, map   
+    loading: true,
     error: ''
-    
   }
   
   componentDidMount = () => {
@@ -241,7 +291,6 @@ class Beaus extends React.Component {
         }
       })
       .then(data => {
-        console.log(data)
         this.setState({
           data: data.result,
           loading: false,
@@ -262,24 +311,8 @@ class Beaus extends React.Component {
       })
     }
   }
-  
-  contentError = (err) => {
-    return (
-      <React.Fragment>
-        {err}
-      </React.Fragment>
-    )
-  }
 
-  contentLoading = () => {
-    return (
-      <React.Fragment>
-        Loading...
-      </React.Fragment>
-    )
-  }
-
-  contentDetails = (id, name, image_url, tasting_note, style, origin, primary_category, producer_name, serving_suggestion) => {
+  handleClickGoToDetails = (id, name, image_url, tasting_note, style, origin, primary_category, producer_name, serving_suggestion) => {
     this.setState({
       view: 'details',
       selectedItem: {
@@ -296,7 +329,7 @@ class Beaus extends React.Component {
     })
   }
 
-  handleClickGoToHome = () => {
+  handleClickBackToHome = () => {
     this.setState({
       view: 'home',
       selectedItem: {}
@@ -306,54 +339,30 @@ class Beaus extends React.Component {
   handleClickBackToDetails = () => {
     this.setState({
       view: 'details',
-      stores: {}
+      store: {}
     })
   }
 
-  handleClickGoToStoreMap = (stores, storeName, storeLatitude, storeLongitude) => {
+  handleClickGoToStoreMap = (storeName, storeLatitude, storeLongitude) => {
     this.setState({
       view: 'map',
-      stores: {
-        stores: stores,
+      store: {
         selectedStoreName: storeName,
         selectedStoreLatitude: storeLatitude,
         selectedStoreLongitude: storeLongitude
       }
     })
   }
-
-  contentData = (data) => {
-    return (
-      <React.Fragment>
-        <h1>Beau’s Seasonal Beverages</h1>
-        <div className='items-container'>
-          {data.map((item, index) => { 
-            return (
-              <div className='item-container' key={item.id}>
-                <div className='item-image-container'>
-                  {item.image_thumb_url ? 
-                    <img src={item.image_thumb_url} className='item-image' onClick={(e) => this.contentDetails(item.id, item.name, item.image_url, item.tasting_note, item.style, item.origin, item.primary_category, item.producer_name, item.serving_suggestion, e)} /> : 
-                    <FontAwesomeIcon icon={faBeer} className="item-image-missing"  onClick={(e) => this.contentDetails(item.id, item.name, item.image_url, item.tasting_note, item.style, item.origin, item.primary_category, item.producer_name, item.serving_suggestion, e, e)} />
-                  }
-                </div>
-                <div className="item-text">{item.name}</div>
-              </div>
-            )
-          })}
-        </div>
-      </React.Fragment>
-    )
-  }
   
   render() {
     let content;
     if (this.state.error !== '') {
-      content = this.contentError(this.state.error);
+      content = SeasonalItemsError(this.state.error);
     }
     else if (this.state.loading) {
-      content = this.contentLoading();
+      content = SeasonalItemsLoading();
     }
-    else if (this.state.view == "details") {
+    else if (this.state.view === "details") {
       content = 
         <ItemDetails 
           id = {this.state.selectedItem.id}
@@ -365,26 +374,28 @@ class Beaus extends React.Component {
           primary_category = {this.state.selectedItem.primary_category}
           producer_name = {this.state.selectedItem.producer_name}
           serving_suggestion = {this.state.selectedItem.serving_suggestion}
-          backClick={this.handleClickGoToHome}
+          handleClickBackToHome={this.handleClickBackToHome}
           handleClickGoToStoreMap={this.handleClickGoToStoreMap}
         />
     }
-    else if (this.state.view == "map") {
+    else if (this.state.view === "map") {
       content = <StoreLocation 
-                  stores = {this.state.stores.stores}
-                  storeName = {this.state.stores.selectedStoreName}
-                  storeLatitude = {this.state.stores.selectedStoreLatitude}
-                  storeLongitude = {this.state.stores.selectedStoreLongitude}
+                  storeName = {this.state.store.selectedStoreName}
+                  storeLatitude = {this.state.store.selectedStoreLatitude}
+                  storeLongitude = {this.state.store.selectedStoreLongitude}
                   handleClickBackToDetails={this.handleClickBackToDetails}
                 />
     }
     else {
-      content = this.contentData(this.state.data);
+      content = <SeasonalItems 
+                  data = {this.state.data} 
+                  handleClickGoToDetails = {this.handleClickGoToDetails}
+                />
     }
 
     return (
       <React.Fragment>
-        <Header />
+        <Header handleClickBackToHome={this.handleClickBackToHome} />
         <div id="main" className="contain-width">
           {content}
         </div>
